@@ -1,0 +1,7 @@
+[project]
+name = "house_prices"
+version = "0.1.0"
+
+[tool.setuptools]
+packages = ["DataUtils", "utils"]
+package-dir = {"" = "src"}

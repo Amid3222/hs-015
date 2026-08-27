@@ -1,3 +1,3 @@
-from .DNNClassifier import DNNClassifier
-from .Trainer import Trainer
-from .DataManager import CustomDataset
+from .DNNLayers import DNNLayers
+from .DNNRegressor import DNNRegressor
+from .CustomDataset import CustomDataset

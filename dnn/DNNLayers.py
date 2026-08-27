@@ -6,16 +6,16 @@ import torch.nn.functional as F  # Функции активации, сверт
 from torch.utils.data import DataLoader, Dataset  # Для загрузки данных
 
 
-class DNNClassifier(nn.Module):
+class DNNLayers(nn.Module):
 
-    def __init__(self, input_dim, hidden_size, output_dim):
-        super(DNNClassifier, self).__init__()
+    def __init__(self, input_dim, hidden_size, output_dim=1):
+        super(DNNLayers, self).__init__()
         self.layers = nn.Sequential(
             nn.BatchNorm1d(input_dim),
             nn.Linear(in_features=input_dim, out_features=hidden_size),
             nn.BatchNorm1d(hidden_size),
             nn.ReLU(),
-            nn.Dropout(p=0.5),
+            nn.Dropout(p=0.3),
             nn.Linear(hidden_size, output_dim),
         )
 

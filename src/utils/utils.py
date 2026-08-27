@@ -1,4 +1,4 @@
-from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV, train_test_split
+from sklearn.model_selection import StratifiedKFold, cross_val_score, GridSearchCV, train_test_split, KFold
 from config import omegaconfig as conf
 import pandas as pd
 
@@ -42,13 +42,15 @@ def test_train_split(X, y):
         X, y,
         test_size=0.1,
         random_state=conf.get_global_conf().params.random_state,
-        stratify=y
     )
     return X_train, X_test, y_train, y_test
 
 
 def get_skf(splits=5, r_state=conf.get_global_conf().params.random_state):
     return StratifiedKFold(n_splits=splits, shuffle=True, random_state=r_state)
+
+def get_kf_reg(splits=5, r_state=conf.get_global_conf().params.random_state):
+    return KFold(n_splits=splits, shuffle=True, random_state=r_state)
 
 
 def accuracy(y_pred, y_true):

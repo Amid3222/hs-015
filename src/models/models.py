@@ -12,6 +12,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.tree import DecisionTreeRegressor
 
 from config import omegaconfig as conf
+from dnn.DNNSklearn import DNNRegressorSKLearn
 
 
 def get_models():
@@ -30,6 +31,8 @@ def get_models():
         "random_forest+best": RandomForestRegressor(**m.random_forest.versions.best),
 
         "catboost+default": CatBoostRegressor(**m.catboost.versions.default),
+
+        "dnn_regressor": DNNRegressorSKLearn(model_kwargs=m.dnn.model_kwargs, optimizer_kwargs=m.dnn.optimizer_kwargs),
 
         "xgboost+best": XGBRegressor(**m.xgboost.versions.best),
 

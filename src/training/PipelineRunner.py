@@ -20,19 +20,18 @@ class PipelineRunner:
     def start_pipline(self):
         print("pipline started")
         self._run()
-        self._evaluate_best()
-        self._create_submission()
-        self._show_model_stats()
+        # self._evaluate_best()
+        # self._create_submission()
 
     def _run(self):
         data_manager = self.data_manager
-        data = data_manager.get_base_preprocessed_data(mode_key="train")
+        data = data_manager.get_base_preprocessed_train_data()
 
         model_manager = mm.ModelsManager()
         validator = v.Validater()
 
         best_model_name = None
-        best_cv_acc = 0
+        best_rmse = 100
         best_model = None
 
         print("start k-fold process...")
@@ -42,11 +41,9 @@ class PipelineRunner:
             print(f"validating model {model_name}...")
 
             full_pipeline = Pipeline(steps=[
-                ("preprocess", data_manager.leak_safe_preprocess_wrapper()),
+                ("preprocess", data_manager.get_preprocess_pipline()),
                 (model_name, model),
             ])
-
-
 
             if str(model_name).startswith("catboost"):
                 validator.k_fold_catboost(dataframe=data, model_params=model.get_params(deep=True),
@@ -61,35 +58,44 @@ class PipelineRunner:
 
             print(f"model {model_name} saved to csv")
 
-            if np.mean(scores) > best_cv_acc:
-                best_cv_acc = np.mean(scores)
+            if np.mean(scores) < best_rmse:
+                best_rmse = np.mean(scores)
                 best_model_name = model_name
-                best_model = best_fold_model
-                print(f"Best model updated {best_model_name}, mean cv: {best_cv_acc}")
+                best_model = model
+                print(f"Best model updated {best_model_name}, mean RMSE: {best_rmse}")
 
-        print(f"Best model: {best_model_name}, mean cv: {best_cv_acc}")
+        print(f"Best model: {best_model_name}, mean RMSE: {best_rmse}")
         joblib.dump(best_model, 'model.joblib')
 
     def _create_submission(self):
         print("creating test submission on best model")
         d = DataManager.DataManager()
-        test = d.get_base_preprocessed_data(mode_key="test")
-        stats = d.get_base_preprocessed_data(mode_key="train")
 
-        test, _ = utils.fillnas(stats, test, columns=["Age"])
-        test, _ = utils.clip(stats, test)
+        train_data = self.data_manager.get_base_preprocessed_train_data()
+
+        target = conf.get_global_conf().params.target_column_name
+
+        X, y = utils.split_data_pd(train_data, target)
 
         loaded_model = joblib.load('model.joblib')
-
         m = clone(loaded_model)
-        m.fit(*utils.split_data_np(stats, "Survived"))
 
-        # predictions = loaded_model.predict(test)
-        predictions = m.predict(test)
-        # sub = pd.concat([d.indexes, pd.DataFrame(predictions)], axis=1)
+        full_pipeline = Pipeline(steps=[
+            ("preprocess", self.data_manager.get_preprocess_pipline()),
+            ("best_model", m),
+        ])
+
+        full_pipeline.fit(X, y)
+
+        test = d.get_full_processed_test_data()
+
+        ids_col = self.data_manager.original_df["test"]['Id']
+
+        predictions = full_pipeline.predict(test)
+
         sub = pd.DataFrame({
-            'PassengerId': d.indexes,
-            'Survived': predictions
+            'Id': ids_col,
+            'SalePrice': np.expm1(predictions)
         })
         sub.to_csv('submisson.csv', index=False)
         print(f"Submission saved as submisson.csv")
@@ -97,19 +103,28 @@ class PipelineRunner:
     def _evaluate_best(self):
         loaded_model = joblib.load('model.joblib')
 
-        df = self.data_manager.get_base_preprocessed_data()
+        print(loaded_model)
+
+        train_data = self.data_manager.get_base_preprocessed_train_data()
+
         target = conf.get_global_conf().params.target_column_name
 
-        X_train, X_test, y_train, y_test = utils.test_train_split(*utils.split_data_pd(df, target))
+        X_train, X_test, y_train, y_test = utils.test_train_split(*utils.split_data_pd(train_data, target))
 
         m = clone(loaded_model)
-        m.fit(X_train, y_train)
 
-        X_test, _ = utils.fillnas(X_train, X_test, columns=["Age"])
-        X_test, X_train = utils.clip(X_train, X_test)
+        full_pipeline = Pipeline(steps=[
+            ("preprocess", self.data_manager.get_preprocess_pipline()),
+            ("best_model", m),
+        ])
+
+        full_pipeline.fit(X_train, y_train)
+
+        y_p = full_pipeline.predict(X_test)
+
         validator = v.Validater()
-        acc = validator.test_train_split_val(X_test, y_test, m)
-        print(f"Val accuracy on best model {acc}")
+        rmse = validator.RMSE(y_p, y_test)
+        print(f"Val RMSE on best model: {rmse}")
 
     def _show_model_stats(self):
 
