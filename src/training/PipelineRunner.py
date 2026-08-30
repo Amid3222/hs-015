@@ -2,6 +2,7 @@ import pandas as pd
 from sklearn import clone
 from sklearn.pipeline import Pipeline
 
+from DataUtils.DataManager import DataManager
 from config import omegaconfig as conf
 from models import ModelsManager as mm
 from training import Validater as v
@@ -40,10 +41,7 @@ class PipelineRunner:
 
             print(f"validating model {model_name}...")
 
-            full_pipeline = Pipeline(steps=[
-                ("preprocess", data_manager.get_preprocess_pipline()),
-                (model_name, model),
-            ])
+            full_pipeline = self.create_pipeline(model, model_name)
 
             if str(model_name).startswith("catboost"):
                 validator.k_fold_catboost(dataframe=data, model_params=model.get_params(deep=True),
@@ -67,6 +65,12 @@ class PipelineRunner:
         print(f"Best model: {best_model_name}, mean RMSE: {best_rmse}")
         joblib.dump(best_model, 'model.joblib')
 
+    def create_pipeline(self, model, model_name) -> Pipeline:
+        return Pipeline(steps=[
+            ("preprocess", self.data_manager.get_preprocess_pipline()),
+            (model_name, model),
+        ])
+
     def _create_submission(self):
         print("creating test submission on best model")
         d = DataManager.DataManager()
@@ -80,10 +84,7 @@ class PipelineRunner:
         loaded_model = joblib.load('model.joblib')
         m = clone(loaded_model)
 
-        full_pipeline = Pipeline(steps=[
-            ("preprocess", self.data_manager.get_preprocess_pipline()),
-            ("best_model", m),
-        ])
+        full_pipeline = self.create_pipeline(m, "best_model")
 
         full_pipeline.fit(X, y)
 
@@ -113,10 +114,7 @@ class PipelineRunner:
 
         m = clone(loaded_model)
 
-        full_pipeline = Pipeline(steps=[
-            ("preprocess", self.data_manager.get_preprocess_pipline()),
-            ("best_model", m),
-        ])
+        full_pipeline = self.create_pipeline(m, "best_model")
 
         full_pipeline.fit(X_train, y_train)
 

@@ -1,6 +1,6 @@
 params:
-  use_best_model: False # использовать для тренировки лучшую(по экспериментам) модель или перебирать все
-  best_model: "catboost+default"
+  use_best_model: True # использовать для тренировки лучшую(по экспериментам) модель или перебирать все
+  best_model: "regression+baseline"
   random_state: 42
   path_to_data: "/data"
   target_column_name: "SalePrice"
